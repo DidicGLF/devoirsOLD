@@ -384,6 +384,21 @@ input[type="color"] {
 .welcome-banner p { opacity: .85; font-size: 14px; }
 
 /* ── Page classes ───────────────────────────────────────────────────────────── */
+.classes-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  padding-top: 32px;
+  margin-top: -32px;
+  padding-bottom: 4px;
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: 32px;
+  padding-right: 32px;
+  transition: box-shadow var(--transition);
+}
+
 .add-form-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -463,10 +478,11 @@ input[type="color"] {
   padding-top: 32px;
   margin-top: -32px;
   padding-bottom: 4px;
+  margin-left: -32px;
+  margin-right: -32px;
+  padding-left: 32px;
+  padding-right: 32px;
   transition: box-shadow var(--transition);
-}
-.devoirs-sticky.is-stuck {
-  box-shadow: 0 4px 12px rgba(0,0,0,.08);
 }
 
 .devoirs-toolbar {

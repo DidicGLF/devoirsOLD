@@ -30,7 +30,6 @@ async function renderDevoirs(container) {
 
     <!-- Formulaire d'ajout -->
     <div class="add-form-card">
-      <div class="card-header">➕ Ajouter un devoir</div>
       <div class="add-form-row" style="flex-wrap:wrap">
         <div class="form-group" style="flex:0 0 auto;min-width:130px">
           <label for="dv-classe">Classe</label>
