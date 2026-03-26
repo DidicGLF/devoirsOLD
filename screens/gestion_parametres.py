@@ -6,22 +6,15 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
-import sys
 import os
 import json
 import shutil
 from datetime import datetime
 
-# Ajouter le dossier parent au chemin
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
 from utils.gestion import charger_classes, charger_devoirs, sauvegarder_classes, sauvegarder_devoirs, CLASSES_FILE, DEVOIRS_FILE
-
-# Import du gestionnaire de configuration
 from utils.config_manager import get_lien_ent, set_lien_ent
-
-# Import du gestionnaire de thème
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
+from models.Classe import Classe
+from models.Devoir import Devoir
 
 class ParametresWidget(QWidget):
     """Écran de gestion des paramètres"""
@@ -360,12 +353,25 @@ class ParametresWidget(QWidget):
             if os.path.exists(DEVOIRS_FILE):
                 shutil.copy(DEVOIRS_FILE, os.path.join(backup_dir, f'devoirs_backup_{timestamp}.json'))
             
-            # Écrire les nouvelles données
-            with open(CLASSES_FILE, 'w', encoding='utf-8') as f:
-                json.dump(import_data["classes"], f, ensure_ascii=False, indent=2)
-            
-            with open(DEVOIRS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(import_data["devoirs"], f, ensure_ascii=False, indent=2)
+            # Reconstruire les objets et sauvegarder de façon atomique
+            nouvelles_classes = [
+                Classe(nom=c["nom"], effectif=int(c.get("effectif", 0)), couleur=c.get("couleur", "#808080"))
+                for c in import_data["classes"]
+            ]
+            sauvegarder_classes(nouvelles_classes)
+
+            classes_dict = {c.nom: c for c in nouvelles_classes}
+            nouveaux_devoirs = []
+            for d in import_data["devoirs"]:
+                nom_classe = d.get("classe_nom") or ""
+                classe_obj = classes_dict.get(nom_classe, Classe(nom=nom_classe, effectif=0, couleur="#808080"))
+                nouveaux_devoirs.append(Devoir(
+                    contenu=d["contenu"],
+                    classe_objet=classe_obj,
+                    date=d.get("date"),
+                    statut=d.get("statut", "Pas fait")
+                ))
+            sauvegarder_devoirs(nouveaux_devoirs)
             
             QMessageBox.information(
                 self,
@@ -418,11 +424,8 @@ class ParametresWidget(QWidget):
                 shutil.copy(DEVOIRS_FILE, os.path.join(backup_dir, f'devoirs_avant_reset_{timestamp}.json'))
             
             # Réinitialiser les fichiers
-            with open(CLASSES_FILE, 'w', encoding='utf-8') as f:
-                json.dump([], f, ensure_ascii=False, indent=2)
-            
-            with open(DEVOIRS_FILE, 'w', encoding='utf-8') as f:
-                json.dump([], f, ensure_ascii=False, indent=2)
+            sauvegarder_classes([])
+            sauvegarder_devoirs([])
             
             # Réinitialiser le lien personnalisé
             set_lien_ent("", "")
@@ -449,25 +452,17 @@ class ParametresWidget(QWidget):
 
     def rafraichir_pages(self):
         """Rafraîchit toutes les pages pour recharger les données"""
-        if self.main_window:
-            # Recharger la page des classes si elle existe
-            if hasattr(self.main_window, 'page_classes') and self.main_window.page_classes:
-                # Récupérer le widget ClassesWidget
-                for i in range(self.main_window.page_classes.layout().count()):
-                    widget = self.main_window.page_classes.layout().itemAt(i).widget()
-                    if widget and hasattr(widget, 'charger_classes_from_utils'):
-                        widget.charger_classes_from_utils()
-                        break
-            
-            # Recharger la page des devoirs si elle existe
-            if hasattr(self.main_window, 'page_devoirs') and self.main_window.page_devoirs:
-                # Récupérer le widget DevoirsWidget
-                for i in range(self.main_window.page_devoirs.layout().count()):
-                    widget = self.main_window.page_devoirs.layout().itemAt(i).widget()
-                    if widget and hasattr(widget, 'charger_devoirs_from_utils'):
-                        widget.charger_devoirs_from_utils()
-                        widget.charger_classes_from_utils()
-                        break
+        if not self.main_window:
+            return
+        if hasattr(self.main_window, 'page_classes') and self.main_window.page_classes:
+            content = getattr(self.main_window.page_classes, '_content', None)
+            if content and hasattr(content, 'charger_classes_from_utils'):
+                content.charger_classes_from_utils()
+        if hasattr(self.main_window, 'page_devoirs') and self.main_window.page_devoirs:
+            content = getattr(self.main_window.page_devoirs, '_content', None)
+            if content and hasattr(content, 'charger_devoirs_from_utils'):
+                content.charger_classes_from_utils()
+                content.charger_devoirs_from_utils()
 
     def modifier_lien_ent(self):
         """Modifie le lien personnalisé de la page d'accueil"""

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mes Devoirs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">📚</span>
+      <span class="brand-text">Mes Devoirs</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#/" class="nav-item" data-route="/">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Accueil</span>
+      </a>
+      <a href="#/classes" class="nav-item" data-route="/classes">
+        <span class="nav-icon">🎓</span>
+        <span class="nav-label">Classes</span>
+      </a>
+      <a href="#/devoirs" class="nav-item" data-route="/devoirs">
+        <span class="nav-icon">📝</span>
+        <span class="nav-label">Devoirs</span>
+      </a>
+      <a href="#/projection" class="nav-item" data-route="/projection">
+        <span class="nav-icon">🖥️</span>
+        <span class="nav-label">Projection</span>
+      </a>
+      <a href="#/parametres" class="nav-item" data-route="/parametres">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Paramètres</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a id="ent-link" href="#" target="_blank" class="ent-link-sidebar hidden">
+        <span class="nav-icon">🔗</span>
+        <span id="ent-link-text" class="nav-label">ENT</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div id="layout">
+    <main id="app-content">
+      <!-- Dynamic content injected here -->
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <!-- Modal container -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-box">
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/classes.js"></script>
+  <script src="/static/js/devoirs.js"></script>
+  <script src="/static/js/projection.js"></script>
+  <script src="/static/js/parametres.js"></script>
+</body>
+</html>

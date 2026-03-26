@@ -32,8 +32,7 @@ def charger_config():
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
-    except:
-        # En cas d'erreur, retourner la config par défaut
+    except (json.JSONDecodeError, OSError):
         return {
             "lien_ent": {
                 "url": "",

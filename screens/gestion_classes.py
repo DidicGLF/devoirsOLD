@@ -6,13 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtGui import QColor, QIntValidator
 
-import sys
-import os
-
-# Ajouter le dossier parent au chemin pour importer utils/gestion.py
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from utils.gestion import charger_classes, sauvegarder_classes
+from utils.gestion import charger_classes, sauvegarder_classes, couleur_to_rgb
 from models.Classe import Classe
 
 class ClassesWidget(QWidget):
@@ -30,9 +24,10 @@ class ClassesWidget(QWidget):
         main_layout.setSpacing(20)
         main_layout.setContentsMargins(50, 0, 50, 50)
 
-        # Ligne de saisie (horizontal)
+        # Ligne de saisie (horizontal, centrée)
         input_layout = QHBoxLayout()
         input_layout.setSpacing(10)
+        input_layout.addStretch()
 
         # 1. Nom de la classe (QLineEdit)
         self.line_nom = QLineEdit()
@@ -70,9 +65,6 @@ class ClassesWidget(QWidget):
         self.btn_couleur.clicked.connect(self.choisir_couleur)
         input_layout.addWidget(self.btn_couleur)
 
-        # Espaceur flexible
-        input_layout.addStretch()
-
         # 4. Bouton Ajouter
         self.btn_ajouter = QPushButton("Ajouter")
         self.btn_ajouter.setFixedSize(100, 40)
@@ -93,6 +85,7 @@ class ClassesWidget(QWidget):
         """)
         self.btn_ajouter.clicked.connect(self.ajouter_classe)
         input_layout.addWidget(self.btn_ajouter)
+        input_layout.addStretch()
 
         # Ajouter la ligne de saisie au layout principal
         main_layout.addLayout(input_layout)
@@ -230,15 +223,10 @@ class ClassesWidget(QWidget):
 
     def rafraichir_page_devoirs(self):
         """Rafraîchit la liste des classes dans la page des devoirs"""
-        if self.main_window:
-            # Recharger la page des devoirs si elle existe
-            if hasattr(self.main_window, 'page_devoirs') and self.main_window.page_devoirs:
-                # Récupérer le widget DevoirsWidget
-                for i in range(self.main_window.page_devoirs.layout().count()):
-                    widget = self.main_window.page_devoirs.layout().itemAt(i).widget()
-                    if widget and hasattr(widget, 'charger_classes_from_utils'):
-                        widget.charger_classes_from_utils()
-                        break
+        if self.main_window and hasattr(self.main_window, 'page_devoirs') and self.main_window.page_devoirs:
+            content = getattr(self.main_window.page_devoirs, '_content', None)
+            if content and hasattr(content, 'charger_classes_from_utils'):
+                content.charger_classes_from_utils()
 
 
 class ClasseCard(QFrame):
@@ -250,34 +238,7 @@ class ClasseCard(QFrame):
         self.init_ui()
 
     def init_ui(self):
-        # Convertir la couleur de la classe en format CSS avec alpha (transparence)
-        color_map = {
-            "gris": "128, 128, 128",
-            "bleu": "0, 0, 255",
-            "vert": "0, 128, 0",
-            "rouge": "255, 0, 0",
-            "jaune": "255, 255, 0",
-            "orange": "255, 165, 0",
-            "violet": "128, 0, 128",
-            "rose": "255, 192, 203",
-            "noir": "0, 0, 0",
-            "blanc": "255, 255, 255",
-        }
-        
-        # Récupérer les valeurs RGB
-        couleur_classe = self.classe.couleur
-        if couleur_classe.startswith('#'):
-            # Convertir hex en RGB
-            hex_color = couleur_classe.lstrip('#')
-            r = int(hex_color[0:2], 16)
-            g = int(hex_color[2:4], 16)
-            b = int(hex_color[4:6], 16)
-            rgb_values = f"{r}, {g}, {b}"
-        else:
-            rgb_values = color_map.get(couleur_classe.lower(), "128, 128, 128")
-        
-        # Stocker pour le eventFilter
-        self.rgb_values = rgb_values
+        self.rgb_values = couleur_to_rgb(self.classe.couleur)
         
         # Style de la carte avec fond coloré (alpha = 0.15 pour une couleur douce)
         self.setStyleSheet(f"""
@@ -466,14 +427,11 @@ class ClasseCard(QFrame):
             b = int(hex_color[4:6], 16)
             self.rgb_values = f"{r}, {g}, {b}"
             
-            # Mettre à jour le style de la carte
-            self.restaurer_style_normal()
-            
             # Sauvegarder
             if self.parent_widget:
                 sauvegarder_classes(self.parent_widget.classes_list)
                 self.parent_widget.rafraichir_page_devoirs()
-            
+
             # Animation de feedback
             self.setStyleSheet(f"""
                 QFrame {{

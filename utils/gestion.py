@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+import tempfile
 from datetime import datetime
 from models.Classe import Classe
 from models.Devoir import Devoir
@@ -24,6 +25,38 @@ def get_data_path():
 DATA_DIR = get_data_path()
 CLASSES_FILE = os.path.join(DATA_DIR, 'classes.json')
 DEVOIRS_FILE = os.path.join(DATA_DIR, 'devoirs.json')
+
+_COLOR_MAP = {
+    "gris": "128, 128, 128",
+    "bleu": "0, 0, 255",
+    "vert": "0, 128, 0",
+    "rouge": "255, 0, 0",
+    "jaune": "255, 255, 0",
+    "orange": "255, 165, 0",
+    "violet": "128, 0, 128",
+    "rose": "255, 192, 203",
+    "noir": "0, 0, 0",
+    "blanc": "255, 255, 255",
+}
+
+def couleur_to_rgb(couleur):
+    """Convertit un nom de couleur ou un code hex en chaîne 'r, g, b'"""
+    if couleur.startswith('#'):
+        h = couleur.lstrip('#')
+        return f"{int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)}"
+    return _COLOR_MAP.get(couleur.lower(), "128, 128, 128")
+
+
+def _ecriture_atomique(chemin, data):
+    """Écrit data en JSON de façon atomique : temp file + rename.
+    Évite qu'un lecteur concurrent trouve un fichier vide pendant l'écriture."""
+    dossier = os.path.dirname(chemin)
+    with tempfile.NamedTemporaryFile('w', encoding='utf-8',
+                                     dir=dossier, delete=False, suffix='.tmp') as tmp:
+        json.dump(data, tmp, ensure_ascii=False, indent=2)
+        tmp_path = tmp.name
+    os.replace(tmp_path, chemin)  # atomique sur Linux/macOS/Windows
+
 
 def charger_classes():
     """Charge les classes depuis le fichier JSON et retourne une liste d'instances de Classe"""
@@ -56,32 +89,35 @@ def sauvegarder_classes(classes):
             "couleur": classe.couleur
         })
 
-    # Créer le dossier data s'il n'existe pas
     os.makedirs(os.path.dirname(CLASSES_FILE), exist_ok=True)
+    _ecriture_atomique(CLASSES_FILE, data)
 
-    # Sauvegarder dans le fichier
-    with open(CLASSES_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def charger_devoirs(classes=None):
+    """Charge les devoirs depuis le fichier JSON et retourne une liste d'instances de Devoir.
 
-def charger_devoirs():
-    """Charge les devoirs depuis le fichier JSON et retourne une liste d'instances de Devoir"""
+    Accepte une liste de classes déjà chargées pour éviter une double lecture disque.
+    """
     if not os.path.exists(DEVOIRS_FILE):
-        return []  # Retourne une liste vide si le fichier n'existe pas
+        return []
 
     with open(DEVOIRS_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    # Charger les classes pour les lier aux devoirs
-    classes = charger_classes()  # Appel à charger_classes() ici → pas besoin de passer en paramètre
-    classes_dict = {classe.nom: classe for classe in classes}  # dictionnaire nom -> objet
+    if classes is None:
+        classes = charger_classes()
+    classes_dict = {classe.nom: classe for classe in classes}
 
     # Reconstruire les instances de Devoir
     devoirs = []
     for item in data:
-        classe_objet = classes_dict.get(item["classe_nom"])  # récupère l'objet Classe par nom
-        if not classe_objet:
-            # Si la classe n'existe pas, on la crée temporairement avec une couleur par défaut
-            classe_objet = Classe(nom=item["classe_nom"], effectif=0, couleur="gris")
+        nom_classe = item.get("classe_nom") or ""
+        if not nom_classe:
+            # Pause : classe fantôme sans nom
+            classe_objet = Classe(nom="", effectif=0, couleur="#e2e8f0")
+        else:
+            classe_objet = classes_dict.get(nom_classe)
+            if not classe_objet:
+                classe_objet = Classe(nom=nom_classe, effectif=0, couleur="gris")
 
         devoir = Devoir(
             contenu=item["contenu"],
@@ -100,14 +136,10 @@ def sauvegarder_devoirs(devoirs):
     for devoir in devoirs:
         data.append({
             "contenu": devoir.contenu,
-            "classe_nom": devoir.classe_objet.nom,  # on stocke le nom, pas l'objet
+            "classe_nom": devoir.classe_objet.nom or None,  # None pour les pauses
             "date": devoir.date,
             "statut": devoir.statut
         })
 
-    # Créer le dossier data s'il n'existe pas
     os.makedirs(os.path.dirname(DEVOIRS_FILE), exist_ok=True)
-
-    # Sauvegarder dans le fichier
-    with open(DEVOIRS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _ecriture_atomique(DEVOIRS_FILE, data)

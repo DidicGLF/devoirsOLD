@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QPushButton, 
+from PySide6.QtWidgets import (QMainWindow, QWidget, QPushButton,
                                QVBoxLayout, QLabel, QStackedWidget, QHBoxLayout)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -8,11 +8,8 @@ from utils.config_manager import get_lien_ent
 # Imports des modules des écrans
 try:
     from screens import gestion_classes
-    print(f"gestion_classes importé: {dir(gestion_classes)}")
 except Exception as e:
     print(f"Erreur d'import gestion_classes: {e}")
-    import traceback
-    traceback.print_exc()
     gestion_classes = None
 
 try:
@@ -134,20 +131,24 @@ class AccueilWindow(QMainWindow):
         self.page_devoirs = None
         self.page_parametres = None
     
-    def create_page_with_back_button(self, content_widget, title):
-        """Crée une page avec un bouton retour"""
+    def create_page_with_back_button(self, content_widget, title, back_widget=None):
+        """Crée une page avec un bouton retour.
+
+        Si back_widget est fourni, le retour va vers cette page et supprime la page courante.
+        Sinon, le retour va à l'accueil (comportement pour les pages principales).
+        """
         page_widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        
+
         # Barre supérieure avec bouton retour
         top_bar = QWidget()
         top_bar.setStyleSheet("background-color: #fcfcfd;")
         top_bar.setFixedHeight(60)
         top_bar_layout = QHBoxLayout()
         top_bar_layout.setContentsMargins(10, 10, 10, 10)
-        
+
         # Bouton retour à gauche
         btn_back = QPushButton("← Retour")
         btn_back.setFixedSize(120, 40)
@@ -166,32 +167,50 @@ class AccueilWindow(QMainWindow):
                 background-color: #2868A8;
             }
         """)
-        btn_back.clicked.connect(self.show_accueil)
-        
+
+        if back_widget is not None:
+            def go_back(checked=False, pw=page_widget, bw=back_widget):
+                self.stacked_widget.setCurrentWidget(bw)
+                self.stacked_widget.removeWidget(pw)
+                pw.deleteLater()
+            btn_back.clicked.connect(go_back)
+        else:
+            btn_back.clicked.connect(self.show_accueil)
+
         # Titre au centre
         title_label = QLabel(title)
         title_label.setFont(QFont("Arial", 16, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
-        
+
         # Espaceur invisible à droite pour équilibrer (même taille que le bouton)
         right_spacer = QWidget()
         right_spacer.setFixedSize(120, 40)
-        
+
         top_bar_layout.addWidget(btn_back)
         top_bar_layout.addStretch()
         top_bar_layout.addWidget(title_label)
         top_bar_layout.addStretch()
         top_bar_layout.addWidget(right_spacer)
         top_bar.setLayout(top_bar_layout)
-        
+
         layout.addWidget(top_bar)
         layout.addWidget(content_widget)
-        
+
+        page_widget._content = content_widget
         page_widget.setLayout(layout)
         return page_widget
     
     def show_accueil(self):
-        """Affiche la page d'accueil"""
+        """Affiche la page d'accueil et supprime les pages temporaires (projection, etc.)"""
+        permanent = {self.page_accueil, self.page_classes, self.page_devoirs, self.page_parametres}
+        to_remove = [
+            self.stacked_widget.widget(i)
+            for i in range(self.stacked_widget.count())
+            if self.stacked_widget.widget(i) not in permanent
+        ]
+        for w in to_remove:
+            self.stacked_widget.removeWidget(w)
+            w.deleteLater()
         self.stacked_widget.setCurrentWidget(self.page_accueil)
     
     def show_gestion_classes(self):
@@ -226,6 +245,10 @@ class AccueilWindow(QMainWindow):
                 return
         
         if self.page_devoirs:
+            content = getattr(self.page_devoirs, '_content', None)
+            if content and hasattr(content, 'charger_devoirs_from_utils'):
+                content.charger_classes_from_utils()
+                content.charger_devoirs_from_utils()
             self.stacked_widget.setCurrentWidget(self.page_devoirs)
     
     def show_gestion_parametres(self):

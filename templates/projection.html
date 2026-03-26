@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projection — Mes Devoirs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="projection-body">
+
+  <!-- Phase 1 : sélection -->
+  <div id="proj-selection">
+    <div class="proj-header">
+      <h1>🖥️ Mode Projection</h1>
+      <p>Sélectionnez une classe puis les devoirs à afficher</p>
+    </div>
+
+    <div class="proj-controls">
+      <div class="form-group">
+        <label for="proj-classe-select">Classe</label>
+        <select id="proj-classe-select" class="form-select">
+          <option value="">— Choisir une classe —</option>
+        </select>
+      </div>
+      <div class="proj-actions-row">
+        <button id="proj-select-all" class="btn btn-secondary btn-sm">Tout sélectionner</button>
+        <button id="proj-deselect-all" class="btn btn-secondary btn-sm">Tout désélectionner</button>
+      </div>
+    </div>
+
+    <div id="proj-devoirs-list" class="proj-devoirs-list">
+      <p class="empty-state">Choisissez une classe pour voir ses devoirs</p>
+    </div>
+
+    <div class="proj-launch">
+      <button id="proj-launch-btn" class="btn btn-primary btn-lg" disabled>
+        ▶️ Afficher la projection
+      </button>
+    </div>
+  </div>
+
+  <!-- Phase 2 : affichage plein écran -->
+  <div id="proj-display" class="hidden">
+    <div class="proj-display-header">
+      <span id="proj-display-classe"></span>
+      <button id="proj-close-btn" class="btn-close-proj" title="Fermer">✕</button>
+    </div>
+    <div id="proj-display-content"></div>
+  </div>
+
+  <script src="/static/js/projection.js"></script>
+</body>
+</html>

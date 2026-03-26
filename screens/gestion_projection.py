@@ -6,11 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
-import sys
-import os
-
-# Ajouter le dossier parent au chemin
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from datetime import datetime
 
 from utils.gestion import charger_classes, charger_devoirs
 
@@ -36,14 +32,16 @@ class ProjectionWidget(QWidget):
         titre.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(titre)
 
-        # Sélecteur de classe
+        # Sélecteur de classe (centré)
         classe_layout = QHBoxLayout()
+        classe_layout.addStretch()
         classe_label = QLabel("Classe :")
         classe_label.setFont(QFont("Arial", 14))
         classe_layout.addWidget(classe_label)
 
         self.combo_classe = QComboBox()
         self.combo_classe.setFixedHeight(35)
+        self.combo_classe.setFixedWidth(200)
         self.combo_classe.setFont(QFont("Arial", 12))
         self.combo_classe.currentIndexChanged.connect(self.charger_devoirs_classe)
         classe_layout.addWidget(self.combo_classe)
@@ -51,9 +49,10 @@ class ProjectionWidget(QWidget):
 
         main_layout.addLayout(classe_layout)
 
-        # Boutons de sélection
+        # Boutons de sélection (centrés)
         buttons_layout = QHBoxLayout()
-        
+        buttons_layout.addStretch()
+
         btn_tout_selectionner = QPushButton("Tout sélectionner")
         btn_tout_selectionner.setFixedSize(150, 35)
         btn_tout_selectionner.setStyleSheet("""
@@ -88,6 +87,7 @@ class ProjectionWidget(QWidget):
 
         buttons_layout.addStretch()
         main_layout.addLayout(buttons_layout)
+
 
         # Zone scrollable pour les devoirs
         scroll_area = QScrollArea()
@@ -164,9 +164,9 @@ class ProjectionWidget(QWidget):
         # Récupérer la classe sélectionnée
         classe_nom = self.combo_classe.currentText()
         
-        # Charger tous les devoirs
-        tous_devoirs = charger_devoirs()
-        
+        # Charger tous les devoirs en réutilisant les classes déjà chargées
+        tous_devoirs = charger_devoirs(classes=self.classes_list)
+
         # Filtrer par classe et trier par date
         devoirs_classe = [d for d in tous_devoirs if d.classe_objet.nom == classe_nom]
         devoirs_classe.sort(key=lambda d: d.date)
@@ -190,11 +190,10 @@ class ProjectionWidget(QWidget):
             item_layout.addWidget(checkbox)
 
             # Date
-            from datetime import datetime
             try:
                 date_obj = datetime.strptime(devoir.date, "%Y-%m-%d")
                 date_affichage = date_obj.strftime("%d/%m/%Y")
-            except:
+            except ValueError:
                 date_affichage = devoir.date
 
             date_label = QLabel(date_affichage)
@@ -252,12 +251,12 @@ class ProjectionWidget(QWidget):
         classe_nom = self.combo_classe.currentText()
         page_projection = PageProjection(devoirs_selectionnes, classe_nom, self.main_window)
         
-        # Ajouter au stack si main_window existe
         if self.main_window:
-            # Créer une page avec bouton retour
+            current_page = self.main_window.stacked_widget.currentWidget()
             page_complete = self.main_window.create_page_with_back_button(
-                page_projection, 
-                f"Projection - {classe_nom}"
+                page_projection,
+                f"Projection - {classe_nom}",
+                back_widget=current_page
             )
             self.main_window.stacked_widget.addWidget(page_complete)
             self.main_window.stacked_widget.setCurrentWidget(page_complete)
@@ -309,13 +308,12 @@ class PageProjection(QWidget):
         scroll_layout.setAlignment(Qt.AlignTop)
 
         # Grouper les devoirs par date
-        from datetime import datetime
         devoirs_par_date = {}
         for devoir in self.devoirs:
             try:
                 date_obj = datetime.strptime(devoir.date, "%Y-%m-%d")
                 date_affichage = date_obj.strftime("%d/%m/%Y")
-            except:
+            except ValueError:
                 date_affichage = devoir.date
             
             if date_affichage not in devoirs_par_date:

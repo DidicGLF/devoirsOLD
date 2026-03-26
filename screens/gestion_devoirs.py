@@ -6,13 +6,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, QTimer, QEvent, QMimeData, QPoint, QRect, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QColor, QFont, QPalette, QDrag, QPixmap, QPainter, QPen
 
-import sys
-import os
+from datetime import datetime
 
-# Ajouter le dossier parent au chemin pour importer utils/gestion.py
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from utils.gestion import charger_classes, charger_devoirs, sauvegarder_devoirs
+from utils.gestion import charger_classes, charger_devoirs, sauvegarder_devoirs, couleur_to_rgb
 from models.Devoir import Devoir
 
 
@@ -94,10 +90,11 @@ class DevoirsWidget(QWidget):
         main_layout.addLayout(input_layout)
         main_layout.addSpacing(20)
 
-        # Barre de tri
+        # Barre de tri (centrée)
         tri_layout = QHBoxLayout()
         tri_layout.setSpacing(10)
         tri_layout.setContentsMargins(0, 0, 0, 10)
+        tri_layout.addStretch()
 
         tri_label = QLabel("Trier par :")
         tri_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #333;")
@@ -172,8 +169,8 @@ class DevoirsWidget(QWidget):
         self.btn_tri_date.setStyleSheet(style_btn_tri)
         self.btn_tri_classe.setStyleSheet(style_btn_tri)
         self.btn_tri_manuel.setStyleSheet(style_btn_tri)
-
         tri_layout.addStretch()
+
         main_layout.addLayout(tri_layout)
 
         # Zone de scroll pour la liste des devoirs
@@ -227,7 +224,7 @@ class DevoirsWidget(QWidget):
 
     def charger_devoirs_from_utils(self):
         """Charge les devoirs depuis utils/gestion.py et les affiche dans la liste personnalisée"""
-        devoirs = charger_devoirs()
+        devoirs = charger_devoirs(classes=self.classes_list)
         self.devoirs_list = devoirs
 
         # Vider la liste
@@ -338,11 +335,13 @@ class DevoirsWidget(QWidget):
             main_window = self.parent()
             while main_window.parent():
                 main_window = main_window.parent()
-            
+
+            current_page = main_window.stacked_widget.currentWidget()
             page_projection = ProjectionWidget(main_window=main_window)
             page_complete = main_window.create_page_with_back_button(
-                page_projection, 
-                "Projection"
+                page_projection,
+                "Projection",
+                back_widget=current_page
             )
             main_window.stacked_widget.addWidget(page_complete)
             main_window.stacked_widget.setCurrentWidget(page_complete)
@@ -466,31 +465,7 @@ class DevoirCard(QFrame):
         self.init_ui()
 
     def init_ui(self):
-        # Convertir la couleur de la classe
-        color_map = {
-            "gris": "128, 128, 128",
-            "bleu": "0, 0, 255",
-            "vert": "0, 128, 0",
-            "rouge": "255, 0, 0",
-            "jaune": "255, 255, 0",
-            "orange": "255, 165, 0",
-            "violet": "128, 0, 128",
-            "rose": "255, 192, 203",
-            "noir": "0, 0, 0",
-            "blanc": "255, 255, 255",
-        }
-        
-        couleur_classe = self.devoir.classe_objet.couleur
-        if couleur_classe.startswith('#'):
-            hex_color = couleur_classe.lstrip('#')
-            r = int(hex_color[0:2], 16)
-            g = int(hex_color[2:4], 16)
-            b = int(hex_color[4:6], 16)
-            rgb_values = f"{r}, {g}, {b}"
-        else:
-            rgb_values = color_map.get(couleur_classe.lower(), "128, 128, 128")
-        
-        self.rgb_values = rgb_values  # Stocker pour réutilisation
+        self.rgb_values = couleur_to_rgb(self.devoir.classe_objet.couleur)
         
         self.setStyleSheet(f"""
             QFrame {{
@@ -549,10 +524,9 @@ class DevoirCard(QFrame):
         # Date
         date_affichage = self.devoir.date
         try:
-            from datetime import datetime
             date_obj = datetime.strptime(self.devoir.date, "%Y-%m-%d")
             date_affichage = date_obj.strftime("%d-%m-%Y")
-        except:
+        except ValueError:
             pass
         
         label_date = QLabel(f"📅 {date_affichage}")
@@ -578,10 +552,8 @@ class DevoirCard(QFrame):
         # Statut
         self.label_statut = QLabel(self.devoir.statut)
         self.label_statut.setObjectName("statut")
-        if self.devoir.statut == "Terminé" or self.devoir.statut == "Fait":
+        if self.devoir.statut in ("Fait", "Terminé"):
             self.label_statut.setStyleSheet("font-weight: bold; padding: 5px 10px; border-radius: 5px; background-color: #28a745; color: white;")
-        elif self.devoir.statut == "En cours":
-            self.label_statut.setStyleSheet("font-weight: bold; padding: 5px 10px; border-radius: 5px; background-color: #ffc107; color: #333;")
         else:
             self.label_statut.setStyleSheet("font-weight: bold; padding: 5px 10px; border-radius: 5px; background-color: #dc3545; color: white;")
 
@@ -733,7 +705,7 @@ class DevoirCard(QFrame):
 
     def changer_statut(self, state):
         """Change le statut du devoir en fonction de l'état de la case à cocher"""
-        if state == 2:
+        if state == Qt.Checked:
             self.devoir.statut = "Fait"
         else:
             self.devoir.statut = "Pas fait"
@@ -786,7 +758,7 @@ class DevoirCard(QFrame):
     def mettre_a_jour_affichage_statut(self):
         """Met à jour l'affichage du label de statut"""
         self.label_statut.setText(self.devoir.statut)
-        if self.devoir.statut == "Fait":
+        if self.devoir.statut in ("Fait", "Terminé"):
             self.label_statut.setStyleSheet("font-weight: bold; padding: 5px 10px; border-radius: 5px; background-color: #28a745; color: white;")
         else:
             self.label_statut.setStyleSheet("font-weight: bold; padding: 5px 10px; border-radius: 5px; background-color: #dc3545; color: white;")
