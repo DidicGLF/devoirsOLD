@@ -41,9 +41,14 @@
     </nav>
     <div class="sidebar-footer">
       <a id="ent-link" href="#" target="_blank" class="ent-link-sidebar hidden">
-        <span class="nav-icon">🔗</span>
+        <span class="nav-icon">🌐</span>
         <span id="ent-link-text" class="nav-label">ENT</span>
       </a>
+      <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Réduire le menu">
+        <svg class="toggle-icon-collapse" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <svg class="toggle-icon-expand" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <span class="nav-label">Réduire</span>
+      </button>
     </div>
   </aside>
 
@@ -64,6 +69,34 @@
     </div>
   </div>
 
+  <script>
+    (function() {
+      const sidebar = document.getElementById('sidebar');
+      const layout = document.getElementById('layout');
+      const btn = document.getElementById('sidebar-toggle');
+      const STORAGE_KEY = 'sidebar-mode';
+
+      function setMode(reduced) {
+        if (reduced) {
+          sidebar.classList.add('sidebar-reduced');
+          layout.classList.add('layout-reduced');
+          btn.title = 'Déployer le menu';
+        } else {
+          sidebar.classList.remove('sidebar-reduced');
+          layout.classList.remove('layout-reduced');
+          btn.title = 'Réduire le menu';
+        }
+        localStorage.setItem(STORAGE_KEY, reduced ? 'reduced' : 'expanded');
+      }
+
+      // Restore saved mode
+      setMode(localStorage.getItem(STORAGE_KEY) === 'reduced');
+
+      btn.addEventListener('click', () => {
+        setMode(!sidebar.classList.contains('sidebar-reduced'));
+      });
+    })();
+  </script>
   <script src="/static/js/app.js"></script>
   <script src="/static/js/classes.js"></script>
   <script src="/static/js/devoirs.js"></script>

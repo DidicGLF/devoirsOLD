@@ -47,19 +47,21 @@ async function renderClasses(container) {
     <div class="classes-sticky">
       <div class="add-form-card">
         <div class="add-form-row">
-          <div class="form-group">
+          <div class="form-group" style="max-width:160px">
             <label for="cls-nom">Nom de la classe</label>
             <input id="cls-nom" class="form-control" placeholder="ex : 6°A" maxlength="20">
           </div>
-          <div class="form-group">
+          <div class="form-group effectif-group">
             <label for="cls-effectif">Effectif</label>
-            <input id="cls-effectif" class="form-control" type="number" min="0" placeholder="0" style="width:90px">
+            <input id="cls-effectif" class="form-control" type="number" min="0" placeholder="0" style="width:70px">
           </div>
           <div class="form-group color-group">
-            <label for="cls-couleur">Couleur</label>
-            <input id="cls-couleur" type="color" value="#62a0ea">
+            <label>Couleur</label>
+            <label class="classe-color-dot" id="cls-couleur-dot" style="background:#62a0ea" title="Choisir une couleur">
+              <input id="cls-couleur" type="color" class="color-swatch" value="#62a0ea">
+            </label>
           </div>
-          <button id="cls-add-btn" class="btn btn-primary">Ajouter</button>
+          <button id="cls-add-btn" class="btn btn-primary" style="margin-left:auto">Ajouter</button>
         </div>
       </div>
     </div><!-- fin .classes-sticky -->
@@ -74,6 +76,9 @@ async function renderClasses(container) {
   document.getElementById('cls-add-btn').addEventListener('click', addClasse);
   document.getElementById('cls-nom').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') addClasse();
+  });
+  document.getElementById('cls-couleur').addEventListener('input', (e) => {
+    document.getElementById('cls-couleur-dot').style.background = e.target.value;
   });
 
   // Ombre sur la zone sticky quand elle est collée en haut
