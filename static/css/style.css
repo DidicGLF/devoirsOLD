@@ -606,6 +606,12 @@ input[type="color"] {
 }
 .devoir-card:hover { box-shadow: var(--shadow-md); transform: translateX(4px); }
 .devoir-card.dragging { opacity: .3; transform: none; cursor: grabbing; }
+.selection-mode .devoir-card,
+.selection-mode .pause-card { cursor: pointer; }
+.selection-mode .devoir-card:hover { transform: translateX(2px); }
+.devoir-card.selected,
+.pause-card.selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); transform: none; }
+.btn.active-selection { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .devoir-checkbox {
   width: 20px;

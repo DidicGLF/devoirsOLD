@@ -225,6 +225,20 @@ def delete_devoir(index):
     return jsonify({'success': True})
 
 
+@app.route('/api/devoirs/delete-batch', methods=['POST'])
+def delete_devoirs_batch():
+    data = request.json
+    indices = data.get('indices', [])
+    if not indices:
+        return jsonify({'error': 'Aucun indice fourni'}), 400
+    devoirs = charger_devoirs()
+    for idx in sorted(set(indices), reverse=True):
+        if 0 <= idx < len(devoirs):
+            devoirs.pop(idx)
+    sauvegarder_devoirs(devoirs)
+    return jsonify({'success': True})
+
+
 @app.route('/api/devoirs/reorder', methods=['POST'])
 def reorder_devoirs():
     data = request.json

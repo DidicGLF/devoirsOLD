@@ -59,6 +59,9 @@ async function renderDevoirs(container) {
       <div class="sort-separator"></div>
       <button id="dv-pause-btn" class="btn btn-secondary btn-sm">⏸ Pause</button>
       <button id="dv-proj-btn" class="btn btn-secondary btn-sm">${iconProjection(14)} Projection</button>
+      <div class="sort-separator"></div>
+      <button id="dv-select-btn" class="btn btn-secondary btn-sm">☑ Sélectionner</button>
+      <button id="dv-delete-sel-btn" class="btn btn-danger btn-sm hidden">🗑️ Supprimer (0)</button>
     </div>
 
     </div><!-- fin .devoirs-sticky -->
@@ -100,6 +103,27 @@ async function renderDevoirs(container) {
   document.getElementById('dv-proj-btn').addEventListener('click', () => {
     window.open('/projection', '_blank');
   });
+
+  // Mode sélection
+  State.selectionMode = false;
+  State.selectedIndices = new Set();
+
+  document.getElementById('dv-select-btn').addEventListener('click', () => {
+    State.selectionMode = !State.selectionMode;
+    State.selectedIndices.clear();
+    const btn = document.getElementById('dv-select-btn');
+    const delBtn = document.getElementById('dv-delete-sel-btn');
+    const list = document.getElementById('devoirs-list');
+    btn.classList.toggle('active-selection', State.selectionMode);
+    btn.textContent = State.selectionMode ? '✕ Annuler' : '☑ Sélectionner';
+    delBtn.classList.add('hidden');
+    if (list) list.classList.toggle('selection-mode', State.selectionMode);
+    // Retirer la sélection visuelle de toutes les cartes
+    list?.querySelectorAll('.devoir-card.selected, .pause-card.selected')
+      .forEach(c => c.classList.remove('selected'));
+  });
+
+  document.getElementById('dv-delete-sel-btn').addEventListener('click', deleteSelectedDevoirs);
 
   // Ombre sur la zone sticky quand elle est collée en haut
   const sticky = container.querySelector('.devoirs-sticky');
@@ -276,6 +300,11 @@ function createPauseCard(devoir, realIndex) {
     el.addEventListener('mousedown', (e) => e.stopPropagation());
   });
 
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('input, button')) return;
+    if (State.selectionMode) toggleCardSelection(card, parseInt(card.dataset.index));
+  });
+
   return card;
 }
 
@@ -387,10 +416,14 @@ function createDevoirCard(devoir, realIndex) {
     }
   });
 
-  // Clic sur la carte (hors champs) → copier le contenu
+  // Clic sur la carte (hors champs) → sélection ou copier le contenu
   card.addEventListener('click', (e) => {
     if (dragWasActive) return;
     if (e.target.closest('input, textarea, button, select')) return;
+    if (State.selectionMode) {
+      toggleCardSelection(card, parseInt(card.dataset.index));
+      return;
+    }
     navigator.clipboard.writeText(devoir.contenu)
       .then(() => toast('Contenu copié', 'success'))
       .catch(() => toast('Impossible de copier', 'error'));
@@ -426,6 +459,7 @@ function onDragPointerDown(e) {
   if (e.button !== undefined && e.button !== 0) return; // clic droit ignoré
   if (e.target.closest('input, textarea, button, select')) return;
   if (State.sortMode !== 'manuel') return;
+  if (State.selectionMode) return;
 
   const card = e.currentTarget;
   const { x, y } = getEventPos(e);
@@ -554,6 +588,54 @@ function showDropIndicator(container, insertBeforeIndex) {
 
 function removeDropIndicator() {
   if (dropIndicatorEl) { dropIndicatorEl.remove(); dropIndicatorEl = null; }
+}
+
+// ── Sélection multiple ────────────────────────────────────────────────────────
+
+function toggleCardSelection(card, index) {
+  if (State.selectedIndices.has(index)) {
+    State.selectedIndices.delete(index);
+    card.classList.remove('selected');
+  } else {
+    State.selectedIndices.add(index);
+    card.classList.add('selected');
+  }
+  const delBtn = document.getElementById('dv-delete-sel-btn');
+  if (!delBtn) return;
+  const n = State.selectedIndices.size;
+  if (n > 0) {
+    delBtn.textContent = `🗑️ Supprimer (${n})`;
+    delBtn.classList.remove('hidden');
+  } else {
+    delBtn.classList.add('hidden');
+  }
+}
+
+async function deleteSelectedDevoirs() {
+  const indices = [...State.selectedIndices];
+  if (!indices.length) return;
+  const n = indices.length;
+  const ok = await confirmer({
+    titre: '🗑️ Supprimer la sélection',
+    message: `Supprimer ${n} devoir${n > 1 ? 's' : ''} définitivement ?`,
+    labelOk: 'Supprimer',
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await api('POST', '/api/devoirs/delete-batch', { indices });
+    toast(`${n} devoir${n > 1 ? 's supprimés' : ' supprimé'}`, 'success');
+    // Quitter le mode sélection et recharger
+    State.selectionMode = false;
+    State.selectedIndices.clear();
+    const selectBtn = document.getElementById('dv-select-btn');
+    const delBtn = document.getElementById('dv-delete-sel-btn');
+    if (selectBtn) { selectBtn.textContent = '☑ Sélectionner'; selectBtn.classList.remove('active-selection'); }
+    if (delBtn) delBtn.classList.add('hidden');
+    await loadDevoirs();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 // ── Add devoir ────────────────────────────────────────────────────────────────
