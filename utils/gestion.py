@@ -123,7 +123,8 @@ def charger_devoirs(classes=None):
             contenu=item["contenu"],
             classe_objet=classe_objet,
             date=item["date"],
-            statut=item["statut"]
+            statut=item["statut"],
+            annotation=item.get("annotation")
         )
         devoirs.append(devoir)
 
@@ -138,7 +139,8 @@ def sauvegarder_devoirs(devoirs):
             "contenu": devoir.contenu,
             "classe_nom": devoir.classe_objet.nom or None,  # None pour les pauses
             "date": devoir.date,
-            "statut": devoir.statut
+            "statut": devoir.statut,
+            "annotation": getattr(devoir, 'annotation', None)
         })
 
     os.makedirs(os.path.dirname(DEVOIRS_FILE), exist_ok=True)

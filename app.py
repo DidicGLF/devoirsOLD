@@ -47,6 +47,7 @@ def devoir_to_dict(devoir, index):
         "classe_couleur": devoir.classe_objet.couleur if not is_pause else None,
         "date": devoir.date if not is_pause else None,
         "statut": devoir.statut if not is_pause else None,
+        "annotation": getattr(devoir, 'annotation', None) if not is_pause else None,
     }
 
 
@@ -210,6 +211,8 @@ def update_devoir(index):
         devoirs[index].statut = data['statut']
     if 'date' in data:
         devoirs[index].date = data['date']
+    if 'annotation' in data:
+        devoirs[index].annotation = data['annotation']  # dict ou None
 
     sauvegarder_devoirs(devoirs)
     return jsonify(devoir_to_dict(devoirs[index], index))

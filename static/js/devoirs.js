@@ -177,15 +177,16 @@ function renderDevoirsList(devoirs, animate = true) {
     const card = devoir.type === 'pause'
       ? createPauseCard(devoir, devoir.index)
       : createDevoirCard(devoir, devoir.index);
+    const row = wrapInRow(card, devoir.type === 'pause' ? null : devoir);
     if (animate) {
-      card.classList.add('card-animate');
-      card.style.animationDelay = `${displayIdx * 60}ms`;
-      card.addEventListener('animationend', () => {
-        card.classList.remove('card-animate');
-        card.style.animationDelay = '';
+      row.classList.add('card-animate');
+      row.style.animationDelay = `${displayIdx * 60}ms`;
+      row.addEventListener('animationend', () => {
+        row.classList.remove('card-animate');
+        row.style.animationDelay = '';
       }, { once: true });
     }
-    container.appendChild(card);
+    container.appendChild(row);
   });
 
   container.querySelectorAll('.dv-contenu-input').forEach(autoResizeTextarea);
@@ -195,23 +196,24 @@ function renderDevoirsList(devoirs, animate = true) {
 
 // Supprime une carte avec animation et met à jour les indices dans le DOM et State
 function removeCardFromDOM(card, deletedIndex) {
-  const height = card.offsetHeight;
-  card.style.transition = 'opacity .18s ease, transform .18s ease';
-  card.style.opacity = '0';
-  card.style.transform = 'translateX(16px)';
+  const target = card.closest('.devoir-row') || card;
+  const height = target.offsetHeight;
+  target.style.transition = 'opacity .18s ease, transform .18s ease';
+  target.style.opacity = '0';
+  target.style.transform = 'translateX(16px)';
 
   setTimeout(() => {
-    card.style.transition = 'max-height .18s ease, padding .18s ease, margin .18s ease';
-    card.style.overflow = 'hidden';
-    card.style.maxHeight = height + 'px';
+    target.style.transition = 'max-height .18s ease, padding .18s ease, margin .18s ease';
+    target.style.overflow = 'hidden';
+    target.style.maxHeight = height + 'px';
     requestAnimationFrame(() => {
-      card.style.maxHeight = '0';
-      card.style.paddingTop = '0';
-      card.style.paddingBottom = '0';
-      card.style.marginBottom = '0';
+      target.style.maxHeight = '0';
+      target.style.paddingTop = '0';
+      target.style.paddingBottom = '0';
+      target.style.marginBottom = '0';
     });
     setTimeout(() => {
-      card.remove();
+      target.remove();
       // Mettre à jour State
       State.devoirs = State.devoirs.filter(d => d.index !== deletedIndex);
       State.devoirs.forEach(d => { if (d.index > deletedIndex) d.index--; });
@@ -239,9 +241,10 @@ function appendCardToList(devoir) {
   const card = devoir.type === 'pause'
     ? createPauseCard(devoir, devoir.index)
     : createDevoirCard(devoir, devoir.index);
-  card.classList.add('card-animate');
-  card.addEventListener('animationend', () => card.classList.remove('card-animate'), { once: true });
-  container.appendChild(card);
+  const row = wrapInRow(card, devoir.type === 'pause' ? null : devoir);
+  row.classList.add('card-animate');
+  row.addEventListener('animationend', () => row.classList.remove('card-animate'), { once: true });
+  container.appendChild(row);
   container.querySelectorAll('.dv-contenu-input').forEach(autoResizeTextarea);
   if (State.sortMode === 'manuel') setupDragDrop(container);
 }
@@ -318,7 +321,15 @@ function createDevoirCard(devoir, realIndex) {
   const dateStr = formatDate(devoir.date);
   const isoDate = devoir.date;
 
+  const hasAnnot = !!(devoir.annotation && devoir.annotation.text);
+  if (hasAnnot) {
+    card.classList.add('has-annotation');
+    card.style.setProperty('--annot-color', devoir.annotation.color);
+  }
+
   card.innerHTML = `
+    <div class="annot-strip"
+         title="${hasAnnot ? 'Modifier l&apos;étiquette' : 'Ajouter une étiquette'}"></div>
     <input type="checkbox" class="devoir-checkbox" ${devoir.statut === 'Fait' ? 'checked' : ''}
            title="Marquer comme ${devoir.statut === 'Fait' ? 'pas fait' : 'fait'}">
     <span class="devoir-classe-tag" style="${classeStyle}">${escHtml(devoir.classe_nom)}</span>
@@ -332,6 +343,12 @@ function createDevoirCard(devoir, realIndex) {
     ${statutBadge(devoir.statut)}
     <button class="btn-icon danger dv-delete-btn" title="Supprimer">🗑️</button>
   `;
+
+  const annotStrip = card.querySelector('.annot-strip');
+  annotStrip.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showAnnotPopover(annotStrip, devoir, card);
+  });
 
   // Checkbox statut — mise à jour du badge en place, pas de rechargement
   const checkbox = card.querySelector('.devoir-checkbox');
@@ -430,11 +447,186 @@ function createDevoirCard(devoir, realIndex) {
   });
 
   // Empêcher le drag sur les inputs/buttons
-  [checkbox, contenuInput, dateInput, card.querySelector('.dv-delete-btn')].forEach(el => {
+  [annotStrip, checkbox, contenuInput, dateInput, card.querySelector('.dv-delete-btn')].forEach(el => {
     el.addEventListener('mousedown', (e) => e.stopPropagation());
   });
 
   return card;
+}
+
+// ── Annotations ───────────────────────────────────────────────────────────────
+
+const ANNOT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#64748b'];
+
+function wrapInRow(card, devoir) {
+  const row = document.createElement('div');
+  row.className = 'devoir-row';
+
+  const leftSlot = document.createElement('div');
+  leftSlot.className = 'ext-slot ext-slot--left';
+
+  const rightSlot = document.createElement('div');
+  rightSlot.className = 'ext-slot ext-slot--right';
+
+  if (devoir && devoir.annotation) {
+    const label = createExtLabel(devoir.annotation);
+    (devoir.annotation.side === 'right' ? rightSlot : leftSlot).appendChild(label);
+  }
+
+  row.appendChild(leftSlot);
+  row.appendChild(card);
+  row.appendChild(rightSlot);
+  return row;
+}
+
+function createExtLabel(annotation) {
+  const el = document.createElement('div');
+  el.className = 'ext-label';
+  el.textContent = annotation.text;
+  const { r, g, b } = annotHexToRgb(annotation.color);
+  const bgColor = `rgba(${r},${g},${b},0.15)`;
+  el.style.background = bgColor;
+  el.style.setProperty('--label-bg', bgColor);       // fond semi-transparent (pointe + rectangle)
+  el.style.setProperty('--label-border', annotation.color); // couleur pleine (bordure + texte)
+  return el;
+}
+
+function annotHexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function annotContrastColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#1e293b' : '#ffffff';
+}
+
+function showAnnotPopover(trigger, devoir, card) {
+  document.querySelector('.annot-popover')?.remove();
+
+  const ann = devoir.annotation || { text: '', color: ANNOT_COLORS[0], side: 'left' };
+
+  const popover = document.createElement('div');
+  popover.className = 'annot-popover';
+  popover.innerHTML = `
+    <div class="annot-popover-title">Étiquette</div>
+    <input class="form-control annot-text-input" placeholder="Texte (ex : Matin, À réviser…)" maxlength="25" value="${escHtml(ann.text)}">
+    <div>
+      <div class="annot-section-label">Couleur</div>
+      <div class="annot-colors">
+        ${ANNOT_COLORS.map(c => `<button class="annot-swatch${c === ann.color ? ' selected' : ''}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="annot-section-label">Position</div>
+      <div class="annot-side-toggle">
+        <button class="annot-side-btn${ann.side !== 'right' ? ' selected' : ''}" data-side="left">← Gauche</button>
+        <button class="annot-side-btn${ann.side === 'right' ? ' selected' : ''}" data-side="right">Droite →</button>
+      </div>
+    </div>
+    <div class="annot-popover-actions">
+      <button class="btn btn-primary btn-sm annot-save-btn" style="flex:1">Enregistrer</button>
+      ${ann.text ? '<button class="btn btn-danger btn-sm annot-delete-btn">Supprimer</button>' : ''}
+    </div>
+  `;
+  document.body.appendChild(popover);
+
+  // Positionnement
+  const rect = trigger.getBoundingClientRect();
+  popover.style.top = (rect.bottom + 6) + 'px';
+  popover.style.left = rect.left + 'px';
+  requestAnimationFrame(() => {
+    const pr = popover.getBoundingClientRect();
+    if (pr.right > window.innerWidth - 8) popover.style.left = (window.innerWidth - pr.width - 8) + 'px';
+    if (pr.bottom > window.innerHeight - 8) popover.style.top = (rect.top - pr.height - 6) + 'px';
+  });
+
+  const textInput = popover.querySelector('.annot-text-input');
+  textInput.focus();
+  textInput.select();
+
+  let selectedColor = ann.color;
+  let selectedSide = ann.side || 'left';
+
+  popover.querySelectorAll('.annot-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      popover.querySelectorAll('.annot-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      selectedColor = sw.dataset.color;
+    });
+  });
+
+  popover.querySelectorAll('.annot-side-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      popover.querySelectorAll('.annot-side-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedSide = btn.dataset.side;
+    });
+  });
+
+  const doSave = async () => {
+    const text = textInput.value.trim();
+    const newAnnot = text ? { text, color: selectedColor, side: selectedSide } : null;
+    await applyAnnotation(card, devoir, newAnnot);
+    popover.remove();
+  };
+
+  popover.querySelector('.annot-save-btn').addEventListener('click', doSave);
+  popover.querySelector('.annot-delete-btn')?.addEventListener('click', async () => {
+    await applyAnnotation(card, devoir, null);
+    popover.remove();
+  });
+
+  textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+    if (e.key === 'Escape') popover.remove();
+  });
+
+  // Fermer au clic extérieur
+  setTimeout(() => {
+    const onOutside = (e) => {
+      if (!popover.contains(e.target) && e.target !== trigger) {
+        popover.remove();
+        document.removeEventListener('mousedown', onOutside);
+      }
+    };
+    document.addEventListener('mousedown', onOutside);
+  }, 0);
+}
+
+async function applyAnnotation(card, devoir, annotation) {
+  const idx = parseInt(card.dataset.index);
+  try {
+    await api('PUT', `/api/devoirs/${idx}`, { annotation });
+    devoir.annotation = annotation;
+    const d = State.devoirs.find(d => d.index === idx);
+    if (d) d.annotation = annotation;
+
+    // Mettre à jour l'indicateur visuel sur la carte
+    card.classList.toggle('has-annotation', !!annotation);
+    if (annotation) card.style.setProperty('--annot-color', annotation.color);
+    else card.style.removeProperty('--annot-color');
+    const strip = card.querySelector('.annot-strip');
+    if (strip) strip.title = annotation ? 'Modifier l\'étiquette' : 'Ajouter une étiquette';
+
+    // Mettre à jour les slots externes
+    const row = card.closest('.devoir-row');
+    if (row) {
+      row.querySelector('.ext-slot--left').innerHTML = '';
+      row.querySelector('.ext-slot--right').innerHTML = '';
+      if (annotation) {
+        const slot = row.querySelector(`.ext-slot--${annotation.side}`);
+        slot.appendChild(createExtLabel(annotation));
+      }
+    }
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
 // ── Drag & Drop (mousedown/mousemove/mouseup + touch unifié) ──────────────────
@@ -581,8 +773,14 @@ function showDropIndicator(container, insertBeforeIndex) {
   indicator.className = 'drop-indicator';
   const target = [...container.querySelectorAll('[data-index]')]
     .find(c => parseInt(c.dataset.index) === insertBeforeIndex);
-  if (target) container.insertBefore(indicator, target);
-  else        container.appendChild(indicator);
+  if (target) {
+    // Remonter au .devoir-row si la carte est imbriquée
+    let anchor = target;
+    while (anchor && anchor.parentElement !== container) anchor = anchor.parentElement;
+    container.insertBefore(indicator, anchor || target);
+  } else {
+    container.appendChild(indicator);
+  }
   dropIndicatorEl = indicator;
 }
 

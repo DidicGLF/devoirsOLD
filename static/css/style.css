@@ -591,6 +591,149 @@ input[type="color"] {
   min-height: 40px;
 }
 
+/* ── Ligne avec étiquettes externes positionnées en absolu ───────────────────── */
+.devoir-row {
+  position: relative; /* ancre pour les slots absolus */
+  /* pas de flex : la carte occupe toute la largeur naturellement */
+}
+.ext-slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  transition: transform var(--transition), opacity var(--transition);
+}
+.ext-slot--left  { right: calc(100% + 8px); }
+.ext-slot--right { left:  calc(100% + 8px); }
+/* L'étiquette suit le slide hover et l'opacité drag de la carte */
+.devoir-row:has(.devoir-card:hover) .ext-slot {
+  transform: translateX(4px);
+}
+.devoir-row:has(.devoir-card.dragging) .ext-slot {
+  opacity: 0.3;
+}
+.ext-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  cursor: default;
+  color: var(--label-border);
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.10)) drop-shadow(0 2px 4px rgba(0,0,0,.06));
+}
+.ext-slot--left .ext-label,
+.ext-slot--right .ext-label {
+  border: 1.5px dashed var(--label-border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+}
+
+/* ── Bouton annotation (dans la carte, gauche du checkbox) ───────────────────── */
+.annot-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+}
+.annot-strip::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  bottom: 8px;
+  border-left: 1.5px dashed var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.devoir-card:hover:not(.has-annotation) .annot-strip::before {
+  opacity: 0.45;
+}
+/* Indicateur visuel : bordure gauche colorée via inset shadow */
+.devoir-card.has-annotation {
+  box-shadow: var(--shadow), inset 4px 0 0 var(--annot-color, var(--primary));
+}
+.devoir-card.has-annotation:hover {
+  box-shadow: var(--shadow-md), inset 4px 0 0 var(--annot-color, var(--primary));
+}
+
+/* ── Popover annotation ──────────────────────────────────────────────────────── */
+.annot-popover {
+  position: fixed;
+  z-index: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 230px;
+}
+.annot-popover-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.annot-section-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.annot-text-input { font-size: 13px; }
+.annot-colors {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.annot-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color var(--transition), transform var(--transition);
+}
+.annot-swatch.selected,
+.annot-swatch:hover { border-color: var(--text-primary); transform: scale(1.15); }
+.annot-side-toggle {
+  display: flex;
+  gap: 6px;
+}
+.annot-side-btn {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.annot-side-btn.selected {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.annot-popover-actions {
+  display: flex;
+  gap: 6px;
+}
+
+
 .devoir-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -603,6 +746,7 @@ input[type="color"] {
   cursor: grab;
   transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition), opacity var(--transition);
   position: relative;
+  overflow: hidden;
 }
 .devoir-card:hover { box-shadow: var(--shadow-md); transform: translateX(4px); }
 .devoir-card.dragging { opacity: .3; transform: none; cursor: grabbing; }
